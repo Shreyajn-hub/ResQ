@@ -1,112 +1,165 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
+import React from 'react';
+import { StyleSheet, View, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+import { EmergencyService } from '@/services/emergency';
 
-export default function TabTwoScreen() {
+export default function SafePlacesScreen() {
+  const helplines = [
+    { name: 'National Emergency', number: '112', icon: 'shield.fill', color: '#FF3B30' },
+    { name: 'Police', number: '100', icon: 'person.badge.shield.checkmark.fill', color: '#007AFF' },
+    { name: 'Ambulance', number: '102', icon: 'cross.case.fill', color: '#34C759' },
+    { name: 'Women Helpline', number: '1091', icon: 'figure.wave', color: '#AF52DE' },
+    { name: 'Fire Brigade', number: '101', icon: 'flame.fill', color: '#FF9500' },
+  ];
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <ThemedView style={styles.container}>
+      <View style={styles.header}>
+        <ThemedText type="title">Safe Places</ThemedText>
+        <ThemedText style={styles.subtitle}>Nearby help and helplines</ThemedText>
+      </View>
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <TouchableOpacity 
+          style={styles.mapPreview} 
+          onPress={() => EmergencyService.getNearbySafePlaces()}
+        >
+          <View style={styles.mapOverlay}>
+            <IconSymbol name="map.fill" size={40} color="#fff" />
+            <ThemedText style={styles.mapText}>Find Nearby Police Stations</ThemedText>
+            <ThemedText style={styles.mapSubtext}>Opens in Google Maps</ThemedText>
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.section}>
+          <ThemedText style={styles.sectionTitle}>Emergency Helplines</ThemedText>
+          <View style={styles.helplineGrid}>
+            {helplines.map((item, index) => (
+              <TouchableOpacity 
+                key={index} 
+                style={styles.helplineCard}
+                onPress={() => EmergencyService.callHelpline(item.number)}
+              >
+                <View style={[styles.iconContainer, { backgroundColor: item.color + '20' }]}>
+                  <IconSymbol name={item.icon as any} size={24} color={item.color} />
+                </View>
+                <ThemedText style={styles.helplineName}>{item.name}</ThemedText>
+                <ThemedText style={[styles.helplineNumber, { color: item.color }]}>{item.number}</ThemedText>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.tipsSection}>
+          <ThemedText style={styles.sectionTitle}>Safety Tips</ThemedText>
+          <View style={styles.tipCard}>
+            <IconSymbol name="lightbulb.fill" size={20} color="#FFD60A" />
+            <ThemedText style={styles.tipText}>Keep your phone charged and enable continuous sharing in crowded areas.</ThemedText>
+          </View>
+          <View style={styles.tipCard}>
+            <IconSymbol name="hand.raised.fill" size={20} color="#FFD60A" />
+            <ThemedText style={styles.tipText}>Shake your phone 3 times to trigger a silent SOS alert.</ThemedText>
+          </View>
+        </View>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    paddingTop: 60,
+    paddingHorizontal: 20,
   },
-  titleContainer: {
-    flexDirection: 'row',
+  header: {
+    marginBottom: 20,
+  },
+  subtitle: {
+    fontSize: 16,
+    opacity: 0.6,
+  },
+  mapPreview: {
+    height: 180,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 30,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  mapOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
     gap: 8,
+  },
+  mapText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  mapSubtext: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.6)',
+  },
+  section: {
+    marginBottom: 30,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  helplineGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  helplineCard: {
+    width: '48%',
+    backgroundColor: 'rgba(150,150,150,0.1)',
+    padding: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    gap: 8,
+  },
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helplineName: {
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  helplineNumber: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  tipsSection: {
+    gap: 12,
+  },
+  tipCard: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(150,150,150,0.05)',
+    padding: 16,
+    borderRadius: 16,
+    gap: 12,
+    alignItems: 'center',
+  },
+  tipText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    opacity: 0.8,
   },
 });
