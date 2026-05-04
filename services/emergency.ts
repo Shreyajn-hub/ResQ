@@ -4,32 +4,36 @@ import * as Location from 'expo-location';
 import { StorageService } from './storage';
 
 export const EmergencyService = {
-  triggerSOS: async () => {
+  triggerSOS: async (customMessage?: string) => {
     try {
       const contacts = await StorageService.getContacts();
       if (contacts.length === 0) {
-        throw new Error('No emergency contacts found. Please add some in settings.');
+        throw new Error('Please add emergency contacts in Settings first.');
       }
 
       // Get current location
+      const isLocationEnabled = await Location.hasServicesEnabledAsync();
       const { status } = await Location.requestForegroundPermissionsAsync();
       let locationMessage = '';
       
-      if (status === 'granted') {
-        const location = await Location.getCurrentPositionAsync({});
+      if (isLocationEnabled && status === 'granted') {
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
         const { latitude, longitude } = location.coords;
-        locationMessage = `\nMy live location: https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+        locationMessage = `\nLive Location: https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
       } else {
-        locationMessage = '\nLocation permission denied. I am in danger!';
+        locationMessage = '\n(Location services disabled)';
       }
 
-      const message = `EMERGENCY! I need help immediately. This is an automated SOS from ResQ.${locationMessage}`;
+      const baseMessage = customMessage || 'EMERGENCY! I need help immediately.';
+      const finalMessage = `${baseMessage} This is an automated SOS from ResQ.${locationMessage}`;
       const phoneNumbers = contacts.map(c => c.phoneNumber);
 
       const isAvailable = await SMS.isAvailableAsync();
       if (isAvailable) {
-        const { result } = await SMS.sendSMSAsync(phoneNumbers, message);
-        return result;
+        await SMS.sendSMSAsync(phoneNumbers, finalMessage);
+        return 'Sent';
       } else {
         throw new Error('SMS is not available on this device.');
       }

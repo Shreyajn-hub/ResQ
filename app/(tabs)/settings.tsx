@@ -7,7 +7,8 @@ import {
   TouchableOpacity, 
   TextInput, 
   Alert,
-  FlatList
+  SafeAreaView,
+  StatusBar
 } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -19,6 +20,7 @@ export default function SettingsScreen() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
+  const [fullName, setFullName] = useState('Shreya. JN');
 
   useEffect(() => {
     loadData();
@@ -62,190 +64,225 @@ export default function SettingsScreen() {
   if (!settings) return null;
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText type="title">Settings</ThemedText>
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" />
+      <ThemedView style={styles.container}>
+        <View style={styles.header}>
+          <ThemedText type="title" style={styles.headerTitle}>Settings & Profile</ThemedText>
+        </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Emergency Contacts</ThemedText>
-          <View style={styles.addContactCard}>
-            <TextInput
-              style={styles.input}
-              placeholder="Contact Name"
-              placeholderTextColor="#888"
-              value={newName}
-              onChangeText={setNewName}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Phone Number"
-              placeholderTextColor="#888"
-              keyboardType="phone-pad"
-              value={newPhone}
-              onChangeText={setNewPhone}
-            />
-            <TouchableOpacity style={styles.addButton} onPress={handleAddContact}>
-              <ThemedText style={styles.addButtonText}>Add Contact</ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          {contacts.map(item => (
-            <View key={item.id} style={styles.contactItem}>
-              <View>
-                <ThemedText style={styles.contactName}>{item.name}</ThemedText>
-                <ThemedText style={styles.contactPhone}>{item.phoneNumber}</ThemedText>
-              </View>
-              <TouchableOpacity onPress={() => handleRemoveContact(item.id)}>
-                <IconSymbol name="trash.fill" size={20} color="#FF3B30" />
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Profile Section */}
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Your Profile</ThemedText>
+            <View style={styles.card}>
+              <ThemedText style={styles.label}>Full Name</ThemedText>
+              <TextInput
+                style={styles.input}
+                value={fullName}
+                onChangeText={setFullName}
+                placeholder="Enter your name"
+                placeholderTextColor="#8B949E"
+              />
+              <TouchableOpacity style={styles.primaryBtn} onPress={() => Alert.alert('Saved', 'Profile name updated.')}>
+                <ThemedText style={styles.primaryBtnText}>Save Name</ThemedText>
               </TouchableOpacity>
             </View>
-          ))}
-        </View>
+          </View>
 
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Emergency Triggers</ThemedText>
-          
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <ThemedText style={styles.settingLabel}>Shake Detection</ThemedText>
-              <ThemedText style={styles.settingDesc}>Trigger SOS when device is shaken</ThemedText>
+          {/* Emergency Contacts Section */}
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Emergency Contacts</ThemedText>
+            <View style={styles.card}>
+              <ThemedText style={styles.label}>Contact Name</ThemedText>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., Mom, Dad, Friend"
+                placeholderTextColor="#8B949E"
+                value={newName}
+                onChangeText={setNewName}
+              />
+              <ThemedText style={[styles.label, { marginTop: 15 }]}>Phone Number</ThemedText>
+              <TextInput
+                style={styles.input}
+                placeholder="e.g., +911234567890"
+                placeholderTextColor="#8B949E"
+                keyboardType="phone-pad"
+                value={newPhone}
+                onChangeText={setNewPhone}
+              />
+              <TouchableOpacity style={styles.secondaryBtn} onPress={handleAddContact}>
+                <ThemedText style={styles.primaryBtnText}>Add Contact</ThemedText>
+              </TouchableOpacity>
             </View>
-            <Switch
-              value={settings.shakeTrigger}
-              onValueChange={() => toggleTrigger('shakeTrigger')}
-              trackColor={{ true: '#FF3B30' }}
-            />
+
+            <ThemedText style={[styles.sectionTitle, { marginTop: 20 }]}>Saved Contacts</ThemedText>
+            {contacts.map(item => (
+              <View key={item.id} style={styles.contactCard}>
+                <View style={styles.contactAvatar}>
+                  <IconSymbol name="person.fill" size={24} color="#58A6FF" />
+                </View>
+                <View style={styles.contactInfo}>
+                  <ThemedText style={styles.contactName}>{item.name}</ThemedText>
+                  <ThemedText style={styles.contactPhone}>{item.phoneNumber}</ThemedText>
+                </View>
+                <TouchableOpacity onPress={() => handleRemoveContact(item.id)}>
+                  <IconSymbol name="trash.fill" size={20} color="#FF3B30" />
+                </TouchableOpacity>
+              </View>
+            ))}
           </View>
 
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <ThemedText style={styles.settingLabel}>Volume Button Press</ThemedText>
-              <ThemedText style={styles.settingDesc}>Press volume buttons 3 times quickly</ThemedText>
+          {/* Triggers Section */}
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Triggers & Toggles</ThemedText>
+            <View style={styles.card}>
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <ThemedText style={styles.settingLabel}>Shake Detection</ThemedText>
+                  <ThemedText style={styles.settingDesc}>Trigger SOS on shake</ThemedText>
+                </View>
+                <Switch
+                  value={settings.shakeTrigger}
+                  onValueChange={() => toggleTrigger('shakeTrigger')}
+                  trackColor={{ true: '#34A853' }}
+                />
+              </View>
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <ThemedText style={styles.settingLabel}>Volume Trigger</ThemedText>
+                  <ThemedText style={styles.settingDesc}>3 quick volume presses</ThemedText>
+                </View>
+                <Switch
+                  value={settings.volumeTrigger}
+                  onValueChange={() => toggleTrigger('volumeTrigger')}
+                  trackColor={{ true: '#34A853' }}
+                />
+              </View>
             </View>
-            <Switch
-              value={settings.volumeTrigger}
-              onValueChange={() => toggleTrigger('volumeTrigger')}
-              trackColor={{ true: '#FF3B30' }}
-            />
           </View>
 
-          <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <ThemedText style={styles.settingLabel}>Voice Activation</ThemedText>
-              <ThemedText style={styles.settingDesc}>Listen for emergency keywords (Beta)</ThemedText>
-            </View>
-            <Switch
-              value={settings.voiceTrigger}
-              onValueChange={() => toggleTrigger('voiceTrigger')}
-              trackColor={{ true: '#FF3B30' }}
-            />
-          </View>
-        </View>
-
-        <View style={styles.section}>
-          <ThemedText style={styles.sectionTitle}>Preferences</ThemedText>
-          <View style={styles.settingRow}>
-            <ThemedText style={styles.settingLabel}>Language</ThemedText>
-            <TouchableOpacity onPress={() => Alert.alert('Coming Soon', 'Multi-language support is in development.')}>
-              <ThemedText style={styles.settingValue}>{settings.language === 'en' ? 'English' : 'Hindi'}</ThemedText>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.settingRow}>
-            <ThemedText style={styles.settingLabel}>Tracking Interval</ThemedText>
-            <ThemedText style={styles.settingValue}>{settings.locationSharingInterval}s</ThemedText>
-          </View>
-        </View>
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
-    </ThemedView>
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#0D1117',
+  },
   container: {
     flex: 1,
-    paddingTop: 60,
     paddingHorizontal: 20,
   },
   header: {
-    marginBottom: 30,
+    paddingVertical: 20,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
   },
   section: {
-    marginBottom: 30,
+    marginBottom: 25,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#58A6FF',
     marginBottom: 15,
-    opacity: 0.8,
   },
-  addContactCard: {
-    backgroundColor: 'rgba(150,150,150,0.1)',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 15,
-    gap: 12,
+  card: {
+    backgroundColor: '#161B22',
+    padding: 20,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#30363D',
+  },
+  label: {
+    fontSize: 14,
+    color: '#8B949E',
+    marginBottom: 8,
   },
   input: {
-    backgroundColor: 'rgba(150,150,150,0.1)',
+    backgroundColor: '#0D1117',
     padding: 12,
     borderRadius: 10,
     color: '#fff',
+    borderWidth: 1,
+    borderColor: '#30363D',
   },
-  addButton: {
-    backgroundColor: '#FF3B30',
-    padding: 12,
-    borderRadius: 10,
+  primaryBtn: {
+    backgroundColor: '#58A6FF',
+    padding: 15,
+    borderRadius: 12,
     alignItems: 'center',
+    marginTop: 20,
   },
-  addButtonText: {
+  secondaryBtn: {
+    backgroundColor: '#34A853',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 20,
+  },
+  primaryBtnText: {
     color: '#fff',
     fontWeight: 'bold',
+    fontSize: 16,
   },
-  contactItem: {
+  contactCard: {
+    backgroundColor: '#161B22',
+    padding: 16,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(150,150,150,0.05)',
-    padding: 16,
-    borderRadius: 12,
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#30363D',
+  },
+  contactAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#0D1117',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contactInfo: {
+    flex: 1,
+    marginLeft: 15,
   },
   contactName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    color: '#C9D1D9',
   },
   contactPhone: {
-    fontSize: 14,
-    opacity: 0.6,
+    fontSize: 13,
+    color: '#58A6FF',
+    marginTop: 2,
   },
   settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(150,150,150,0.1)',
+    paddingVertical: 10,
   },
   settingInfo: {
     flex: 1,
-    marginRight: 10,
   },
   settingLabel: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: 'bold',
+    color: '#C9D1D9',
   },
   settingDesc: {
     fontSize: 12,
-    opacity: 0.5,
+    color: '#8B949E',
     marginTop: 2,
-  },
-  settingValue: {
-    fontSize: 14,
-    color: '#FF3B30',
-    fontWeight: '600',
   },
 });

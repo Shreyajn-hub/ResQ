@@ -1,211 +1,377 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Alert, TouchableOpacity } from 'react-native';
-import { SOSButton } from '@/components/SOSButton';
+import { 
+  StyleSheet, 
+  View, 
+  Alert, 
+  TouchableOpacity, 
+  ScrollView, 
+  SafeAreaView,
+  StatusBar,
+  Dimensions
+} from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { EmergencyService } from '@/services/emergency';
 import { LocationService } from '@/services/location';
-import { useEmergencyTriggers } from '@/hooks/use-emergencyTriggers';
+import { useEmergencyTriggers } from '@/hooks/useEmergencyTriggers';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { StorageService } from '@/services/storage';
+import { StorageService, Contact, Settings } from '@/services/storage';
+import * as Location from 'expo-location';
+
+const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
-  const [isUnsafe, setIsUnsafe] = useState(false);
-  const [contactCount, setContactCount] = useState(0);
+  const [isTracking, setIsTracking] = useState(false);
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [userName, setUserName] = useState('Shreya');
 
-  // Initialize hardware triggers (Shake, Volume)
+  // Initialize hardware triggers
   useEmergencyTriggers();
 
   useEffect(() => {
-    loadStatus();
+    loadData();
+    const interval = setInterval(loadData, 5000); // Refresh data periodically
+    return () => clearInterval(interval);
   }, []);
 
-  const loadStatus = async () => {
-    const contacts = await StorageService.getContacts();
-    setContactCount(contacts.length);
+  const loadData = async () => {
+    const s = await StorageService.getSettings();
+    const c = await StorageService.getContacts();
+    setSettings(s);
+    setContacts(c);
   };
 
-  const handleSOS = async () => {
+  const handleSOS = async (type: 'emergency' | 'unsafe' | 'location') => {
+    let msg = 'EMERGENCY! I need help immediately.';
+    if (type === 'unsafe') msg = "I don't feel safe, please check on me.";
+    if (type === 'location') msg = "Here is my current location.";
+
     try {
-      await EmergencyService.triggerSOS();
-      Alert.alert('SOS Sent', 'Your emergency contacts have been notified with your location.');
+      await EmergencyService.triggerSOS(msg);
+      Alert.alert('Alert Sent', 'Your contacts have been notified.');
     } catch (error: any) {
       Alert.alert('Error', error.message);
     }
   };
 
-  const toggleSafetyStatus = async () => {
-    const nextStatus = !isUnsafe;
-    setIsUnsafe(nextStatus);
-    
-    if (nextStatus) {
+  const toggleTracking = async () => {
+    if (isTracking) {
+      await LocationService.stopContinuousSharing();
+      setIsTracking(false);
+    } else {
       try {
         await LocationService.startContinuousSharing();
-        Alert.alert('Tracking Enabled', 'Your location is now being shared every 30 seconds.');
+        setIsTracking(true);
+        Alert.alert('Tracking Enabled', 'Live location sharing is now active.');
       } catch (error: any) {
-        setIsUnsafe(false);
-        Alert.alert('Permission Denied', error.message);
+        Alert.alert('Error', error.message);
       }
-    } else {
-      await LocationService.stopContinuousSharing();
-      Alert.alert('Tracking Disabled', 'Continuous location sharing has stopped.');
     }
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <View style={styles.header}>
-        <ThemedText type="title" style={styles.title}>ResQ</ThemedText>
-        <ThemedText style={styles.subtitle}>Personal Safety Assistant</ThemedText>
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        
+        {/* Welcome Section */}
+        <View style={styles.welcomeContainer}>
+          <ThemedText style={styles.welcomeText}>Welcome to ResQ Safety</ThemedText>
+          <ThemedText style={styles.nameText}>{userName}.</ThemedText>
+          <ThemedText style={styles.contextText}>Your personal security assistant is active and monitoring your safety triggers.</ThemedText>
+        </View>
 
-      <View style={styles.statusSection}>
-        <View style={[styles.statusCard, isUnsafe ? styles.unsafeCard : styles.safeCard]}>
-          <IconSymbol 
-            name={isUnsafe ? "exclamationmark.shield.fill" : "checkmark.shield.fill"} 
-            size={32} 
-            color="#fff" 
-          />
-          <View style={styles.statusTextContainer}>
-            <ThemedText style={styles.statusLabel}>Current Status</ThemedText>
-            <ThemedText style={styles.statusValue}>
-              {isUnsafe ? "UNSAFE - Sharing Location" : "SAFE - Monitoring Triggers"}
-            </ThemedText>
-          </View>
-          <TouchableOpacity onPress={toggleSafetyStatus} style={styles.toggleBtn}>
-            <ThemedText style={styles.toggleBtnText}>{isUnsafe ? "I'm Safe" : "I'm Unsafe"}</ThemedText>
+        {/* Manual SOS Trigger Button */}
+        <View style={styles.mainActionContainer}>
+          <TouchableOpacity 
+            style={styles.sosCircle} 
+            activeOpacity={0.8}
+            onPress={() => handleSOS('emergency')}
+          >
+            <View style={styles.sosInnerCircle}>
+              <IconSymbol name="exclamationmark.triangle.fill" size={50} color="#fff" />
+              <ThemedText style={styles.sosLabel}>SOS</ThemedText>
+            </View>
+          </TouchableOpacity>
+          <ThemedText style={styles.sosHint}>TAP TO TRIGGER EMERGENCY ALERT</ThemedText>
+        </View>
+
+        {/* Quick Help Grid */}
+        <View style={styles.gridContainer}>
+          <TouchableOpacity 
+            style={[styles.gridItem, { backgroundColor: '#FF9500' }]} 
+            onPress={() => handleSOS('unsafe')}
+          >
+            <IconSymbol name="exclamationmark.shield.fill" size={24} color="#fff" />
+            <ThemedText style={styles.gridText}>I Don't Feel Safe</ThemedText>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.gridItem, { backgroundColor: '#007AFF' }]} 
+            onPress={() => handleSOS('location')}
+          >
+            <IconSymbol name="paperplane.fill" size={24} color="#fff" />
+            <ThemedText style={styles.gridText}>Send My Location</ThemedText>
           </TouchableOpacity>
         </View>
-      </View>
 
-      <View style={styles.mainAction}>
-        <SOSButton onPress={handleSOS} />
-        <ThemedText style={styles.hint}>One-tap to alert emergency contacts</ThemedText>
-      </View>
-
-      <View style={styles.quickActions}>
-        <TouchableOpacity style={styles.actionCard} onPress={() => EmergencyService.callHelpline('112')}>
-          <IconSymbol name="phone.fill" size={24} color="#FF3B30" />
-          <ThemedText style={styles.actionLabel}>Police (112)</ThemedText>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.actionCard} onPress={() => EmergencyService.getNearbySafePlaces()}>
-          <IconSymbol name="map.fill" size={24} color="#34C759" />
-          <ThemedText style={styles.actionLabel}>Safe Places</ThemedText>
-        </TouchableOpacity>
-      </View>
-
-      {contactCount === 0 && (
-        <View style={styles.warningBanner}>
-          <IconSymbol name="exclamationmark.circle.fill" size={20} color="#FF9500" />
-          <ThemedText style={styles.warningText}>No emergency contacts added! Go to Settings.</ThemedText>
+        {/* Live Tracking Section */}
+        <View style={styles.cardContainer}>
+          <View style={styles.cardHeader}>
+            <IconSymbol name="map.fill" size={20} color="#58A6FF" />
+            <ThemedText style={styles.cardTitle}>Live Location Tracking</ThemedText>
+          </View>
+          <ThemedText style={styles.cardDesc}>Continuously share your location every 30 seconds with emergency contacts.</ThemedText>
+          <TouchableOpacity 
+            style={[styles.trackingBtn, isTracking ? styles.trackingActive : styles.trackingInactive]}
+            onPress={toggleTracking}
+          >
+            <ThemedText style={styles.trackingBtnText}>
+              {isTracking ? 'STOP LIVE TRACKING' : 'START LIVE TRACKING'}
+            </ThemedText>
+          </TouchableOpacity>
         </View>
-      )}
-    </ThemedView>
+
+        {/* Emergency Contacts Section */}
+        <View style={styles.sectionHeader}>
+          <ThemedText style={styles.sectionTitle}>Emergency Contacts</ThemedText>
+          <TouchableOpacity onPress={() => Alert.alert('Settings', 'Manage contacts in Settings tab.')}>
+            <ThemedText style={styles.editBtn}>Manage</ThemedText>
+          </TouchableOpacity>
+        </View>
+        
+        {contacts.length === 0 ? (
+          <ThemedText style={styles.emptyText}>No contacts added yet.</ThemedText>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.contactList}>
+            {contacts.map(c => (
+              <View key={c.id} style={styles.contactChip}>
+                <View style={styles.avatar}>
+                  <ThemedText style={styles.avatarText}>{c.name[0]}</ThemedText>
+                </View>
+                <ThemedText numberOfLines={1} style={styles.chipName}>{c.name}</ThemedText>
+              </View>
+            ))}
+          </ScrollView>
+        )}
+
+        {/* Safety Status Cards */}
+        <View style={styles.statusSection}>
+           <View style={styles.statusBox}>
+              <IconSymbol name="hand.raised.fill" size={20} color={settings?.shakeTrigger ? "#34C759" : "#8B949E"} />
+              <ThemedText style={styles.statusBoxText}>Shake: {settings?.shakeTrigger ? 'ON' : 'OFF'}</ThemedText>
+           </View>
+           <View style={styles.statusBox}>
+              <IconSymbol name="phone.fill" size={20} color={settings?.volumeTrigger ? "#34C759" : "#8B949E"} />
+              <ThemedText style={styles.statusBoxText}>Volume: {settings?.volumeTrigger ? 'ON' : 'OFF'}</ThemedText>
+           </View>
+        </View>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#050A0F',
+  },
   container: {
     flex: 1,
-    paddingTop: 60,
     paddingHorizontal: 20,
   },
-  header: {
-    marginBottom: 30,
-    alignItems: 'center',
+  welcomeContainer: {
+    marginTop: 30,
+    marginBottom: 20,
   },
-  title: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    color: '#FF3B30',
-  },
-  subtitle: {
+  welcomeText: {
     fontSize: 16,
-    opacity: 0.6,
+    color: '#8B949E',
+    fontWeight: '500',
   },
-  statusSection: {
-    marginBottom: 40,
+  nameText: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#fff',
+    marginVertical: 4,
   },
-  statusCard: {
-    flexDirection: 'row',
+  contextText: {
+    fontSize: 14,
+    color: '#8B949E',
+    lineHeight: 20,
+  },
+  mainActionContainer: {
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 20,
-    gap: 12,
+    marginVertical: 30,
   },
-  safeCard: {
-    backgroundColor: '#34C759',
-  },
-  unsafeCard: {
-    backgroundColor: '#FF3B30',
-  },
-  statusTextContainer: {
-    flex: 1,
-  },
-  statusLabel: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  statusValue: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  toggleBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  toggleBtnText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  mainAction: {
-    flex: 1,
+  sosCircle: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 59, 48, 0.2)',
   },
-  hint: {
+  sosInnerCircle: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: '#FF3B30',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 20,
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 15,
+  },
+  sosLabel: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#fff',
+    marginTop: 5,
+  },
+  sosHint: {
     marginTop: 20,
-    fontSize: 14,
-    opacity: 0.5,
+    fontSize: 12,
+    color: '#8B949E',
+    fontWeight: 'bold',
+    letterSpacing: 1,
   },
-  quickActions: {
+  gridContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     gap: 15,
-    marginBottom: 30,
+    marginVertical: 10,
   },
-  actionCard: {
+  gridItem: {
     flex: 1,
-    backgroundColor: 'rgba(150,150,150,0.1)',
     padding: 20,
     borderRadius: 20,
     alignItems: 'center',
     gap: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(150,150,150,0.2)',
   },
-  actionLabel: {
+  gridText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 13,
+    textAlign: 'center',
+  },
+  cardContainer: {
+    backgroundColor: '#111827',
+    padding: 20,
+    borderRadius: 24,
+    marginVertical: 20,
+    borderWidth: 1,
+    borderColor: '#1F2937',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  cardDesc: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    lineHeight: 18,
+    marginBottom: 20,
+  },
+  trackingBtn: {
+    paddingVertical: 15,
+    borderRadius: 15,
+    alignItems: 'center',
+  },
+  trackingInactive: {
+    backgroundColor: '#374151',
+  },
+  trackingActive: {
+    backgroundColor: '#EA4335',
+  },
+  trackingBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 15,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  editBtn: {
+    color: '#58A6FF',
     fontSize: 14,
     fontWeight: '600',
   },
-  warningBanner: {
+  contactList: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 149, 0, 0.1)',
-    padding: 12,
-    borderRadius: 12,
-    gap: 8,
     marginBottom: 20,
   },
-  warningText: {
-    color: '#FF9500',
-    fontSize: 13,
+  contactChip: {
+    width: 80,
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#1F2937',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  avatarText: {
+    color: '#58A6FF',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  chipName: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  emptyText: {
+    color: '#4B5563',
+    fontStyle: 'italic',
+    marginBottom: 20,
+  },
+  statusSection: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  statusBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111827',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#1F2937',
+  },
+  statusBoxText: {
+    fontSize: 12,
+    color: '#9CA3AF',
     fontWeight: '600',
   },
 });

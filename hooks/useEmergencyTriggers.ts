@@ -1,13 +1,26 @@
 import { useEffect, useRef } from 'react';
-import RNShake from 'react-native-shake';
-import { VolumeManager } from 'react-native-volume-manager';
+import { Alert, Platform } from 'react-native';
 import { StorageService } from '../services/storage';
 import { EmergencyService } from '../services/emergency';
-import { Alert } from 'react-native';
+
+// Dynamically import native modules to prevent crash in Expo Go
+let RNShake: any;
+try {
+  RNShake = require('react-native-shake').default;
+} catch (e) {
+  console.log('RNShake not available');
+}
+
+let VolumeManager: any;
+try {
+  VolumeManager = require('react-native-volume-manager').VolumeManager;
+} catch (e) {
+  console.log('VolumeManager not available');
+}
 
 export const useEmergencyTriggers = () => {
-  const lastVolumePress = useRef<number>(0);
-  const volumePressCount = useRef<number>(0);
+  const pressCount = useRef<number>(0);
+  const lastPressTime = useRef<number>(0);
 
   useEffect(() => {
     let shakeSubscription: any;
@@ -17,35 +30,43 @@ export const useEmergencyTriggers = () => {
       const settings = await StorageService.getSettings();
 
       // Shake Trigger
-      if (settings.shakeTrigger) {
-        shakeSubscription = RNShake.addListener(() => {
-          Alert.alert(
-            'Shake Detected',
-            'Do you want to trigger SOS?',
-            [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Trigger SOS', onPress: () => EmergencyService.triggerSOS(), style: 'destructive' },
-            ]
-          );
-        });
+      if (settings.shakeTrigger && RNShake) {
+        try {
+          shakeSubscription = RNShake.addListener(() => {
+            Alert.alert(
+              'Emergency Alert',
+              'Shake detected! Do you want to send an SOS?',
+              [
+                { text: 'No, I am safe', style: 'cancel' },
+                { text: 'YES, SEND SOS', onPress: () => EmergencyService.triggerSOS(), style: 'destructive' },
+              ]
+            );
+          });
+        } catch (e) {
+          console.error('Error adding shake listener:', e);
+        }
       }
 
-      // Volume Trigger (Simulated sequence: Press volume 3 times quickly)
-      if (settings.volumeTrigger) {
-        volumeSubscription = VolumeManager.addVolumeListener((data) => {
-          const now = Date.now();
-          if (now - lastVolumePress.current < 1000) {
-            volumePressCount.current += 1;
-          } else {
-            volumePressCount.current = 1;
-          }
-          lastVolumePress.current = now;
+      // Volume Trigger
+      if (settings.volumeTrigger && VolumeManager) {
+        try {
+          volumeSubscription = VolumeManager.addVolumeListener((result: any) => {
+            const now = Date.now();
+            if (now - lastPressTime.current < 2000) {
+              pressCount.current += 1;
+            } else {
+              pressCount.current = 1;
+            }
+            lastPressTime.current = now;
 
-          if (volumePressCount.current >= 3) {
-            volumePressCount.current = 0;
-            EmergencyService.triggerSOS();
-          }
-        });
+            if (pressCount.current >= 3) {
+              pressCount.current = 0;
+              EmergencyService.triggerSOS().catch(err => console.log('Volume trigger error:', err));
+            }
+          });
+        } catch (e) {
+          console.error('Error adding volume listener:', e);
+        }
       }
     };
 

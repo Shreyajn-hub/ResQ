@@ -33,6 +33,7 @@ const MAPPING = {
   'flame.fill': 'local-fire-department',
   'lightbulb.fill': 'lightbulb',
   'hand.raised.fill': 'back-hand',
+  'person.fill': 'person',
 } as IconMapping;
 
 /**
