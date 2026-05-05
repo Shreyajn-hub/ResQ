@@ -1,53 +1,79 @@
 import { useEffect, useRef } from 'react';
 import { Alert, Platform } from 'react-native';
+import { Accelerometer } from 'expo-sensors';
 import { StorageService } from '../services/storage';
 import { EmergencyService } from '../services/emergency';
+import RNShake from 'react-native-shake';
 
-// Dynamically import native modules to prevent crash in Expo Go
-let RNShake: any;
-try {
-  RNShake = require('react-native-shake').default;
-} catch (e) {
-  console.log('RNShake not available');
-}
-
+// Dynamically import VolumeManager to prevent crash in Expo Go
 let VolumeManager: any;
 try {
   VolumeManager = require('react-native-volume-manager').VolumeManager;
 } catch (e) {
-  console.log('VolumeManager not available');
+  console.log('VolumeManager not available in this environment');
 }
 
 export const useEmergencyTriggers = () => {
   const pressCount = useRef<number>(0);
   const lastPressTime = useRef<number>(0);
+  
+  // Accelerometer fallback state
+  const lastUpdate = useRef<number>(0);
+  const shakeCount = useRef<number>(0);
+  const lastShakeTime = useRef<number>(0);
+
+  const ACCEL_THRESHOLD = 2.5; // G-force threshold for shake
+  const SHAKE_WAIT_TIME = 800; // Time between shakes in ms
+  const MIN_SHAKES = 3; // Number of shakes required
 
   useEffect(() => {
-    let shakeSubscription: any;
+    let accelerometerSubscription: any;
     let volumeSubscription: any;
 
     const setupTriggers = async () => {
       const settings = await StorageService.getSettings();
+      if (!settings.shakeTrigger && !settings.volumeTrigger) return;
 
-      // Shake Trigger
-      if (settings.shakeTrigger && RNShake) {
+      // 1. Native Shake Detection (Reliable for Production)
+      if (settings.shakeTrigger) {
         try {
-          shakeSubscription = RNShake.addListener(() => {
-            Alert.alert(
-              'Emergency Alert',
-              'Shake detected! Do you want to send an SOS?',
-              [
-                { text: 'No, I am safe', style: 'cancel' },
-                { text: 'YES, SEND SOS', onPress: () => EmergencyService.triggerSOS(), style: 'destructive' },
-              ]
-            );
+          const shakeSub = RNShake.addListener(() => {
+            console.log('Native shake detected');
+            triggerEmergencyAlert('Native Shake');
           });
+          
+          // 2. Accelerometer Fallback (Works in Expo Go/Development)
+          Accelerometer.setUpdateInterval(100);
+          accelerometerSubscription = Accelerometer.addListener(data => {
+            const { x, y, z } = data;
+            const currentTime = Date.now();
+            
+            // Calculate total G-force magnitude
+            const totalForce = Math.sqrt(x * x + y * y + z * z);
+            const delta = Math.abs(totalForce - 1); // Subtract gravity (1G)
+
+            if (delta > ACCEL_THRESHOLD) {
+              if (currentTime - lastShakeTime.current > SHAKE_WAIT_TIME) {
+                shakeCount.current = 0; // Reset if too slow
+              }
+              
+              shakeCount.current += 1;
+              lastShakeTime.current = currentTime;
+
+              if (shakeCount.current >= MIN_SHAKES) {
+                shakeCount.current = 0;
+                triggerEmergencyAlert('Motion Trigger');
+              }
+            }
+          });
+          
+          return () => shakeSub.remove();
         } catch (e) {
-          console.error('Error adding shake listener:', e);
+          console.log('Native shake listener failed, relying on Accelerometer');
         }
       }
 
-      // Volume Trigger
+      // 3. Volume Trigger (Requires Development Build)
       if (settings.volumeTrigger && VolumeManager) {
         try {
           volumeSubscription = VolumeManager.addVolumeListener((result: any) => {
@@ -61,7 +87,7 @@ export const useEmergencyTriggers = () => {
 
             if (pressCount.current >= 3) {
               pressCount.current = 0;
-              EmergencyService.triggerSOS().catch(err => console.log('Volume trigger error:', err));
+              EmergencyService.triggerSOS("Emergency volume trigger!").catch(err => console.log('Volume trigger error:', err));
             }
           });
         } catch (e) {
@@ -70,11 +96,25 @@ export const useEmergencyTriggers = () => {
       }
     };
 
+    const triggerEmergencyAlert = (source: string) => {
+      console.log(`SOS triggered via ${source}`);
+      Alert.alert(
+        'Emergency SOS',
+        'Vigorous movement detected. Do you want to send an SOS alert to your guardians?',
+        [
+          { text: 'I AM SAFE', style: 'cancel' },
+          { text: 'SEND SOS NOW', onPress: () => EmergencyService.triggerSOS(), style: 'destructive' },
+        ],
+        { cancelable: false }
+      );
+    };
+
     setupTriggers();
 
     return () => {
-      shakeSubscription?.remove();
+      accelerometerSubscription?.remove();
       volumeSubscription?.remove();
+      RNShake.removeAllListeners();
     };
   }, []);
 };
