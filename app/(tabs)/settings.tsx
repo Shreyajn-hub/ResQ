@@ -25,7 +25,7 @@ export default function SettingsScreen() {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [newName, setNewName] = useState('');
   const [newPhone, setNewPhone] = useState('');
-  const [fullName, setFullName] = useState('Shreya');
+  const [profileName, setProfileName] = useState('');
 
   useEffect(() => {
     loadData();
@@ -36,57 +36,7 @@ export default function SettingsScreen() {
     const storedSettings = await StorageService.getSettings();
     setContacts(storedContacts);
     setSettings(storedSettings);
-  };
-
-  const handleAddContact = async () => {
-    if (!newName || !newPhone) {
-      Alert.alert('Missing Info', 'Please enter both name and phone number.');
-      return;
-    }
-    const newContact: Contact = {
-      id: Date.now().toString(),
-      name: newName,
-      phoneNumber: newPhone,
-    };
-    await StorageService.addContact(newContact);
-    setContacts([...contacts, newContact]);
-    setNewName('');
-    setNewPhone('');
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  };
-
-  const handleRemoveContact = async (id: string) => {
-    await StorageService.removeContact(id);
-    setContacts(contacts.filter(c => c.id !== id));
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
-  const toggleTrigger = async (key: keyof Settings) => {
-    if (!settings) return;
-    const updated = { ...settings, [key]: !settings[key] };
-    await StorageService.updateSettings(updated);
-    setSettings(updated);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  };
-
-  if (!settings) return null;
-
-export default function SettingsScreen() {
-  const insets = useSafeAreaInsets();
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [settings, setSettings] = useState<Settings | null>(null);
-  const [newName, setNewName] = useState('');
-  const [newPhone, setNewPhone] = useState('');
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
-    const storedContacts = await StorageService.getContacts();
-    const storedSettings = await StorageService.getSettings();
-    setContacts(storedContacts);
-    setSettings(storedSettings);
+    setProfileName(storedSettings.userName);
   };
 
   const handleAddContact = async () => {
@@ -120,6 +70,13 @@ export default function SettingsScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
+  const handleUpdateProfile = async () => {
+    if (!settings || !profileName) return;
+    await StorageService.updateSettings({ userName: profileName });
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert('Profile Updated', 'Your name has been updated successfully.');
+  };
+
   if (!settings) return null;
 
   return (
@@ -141,6 +98,34 @@ export default function SettingsScreen() {
           <View style={styles.header}>
             <ThemedText style={styles.headerTitle}>Configuration</ThemedText>
             <ThemedText style={styles.headerSubtitle}>Personalize your security layers</ThemedText>
+          </View>
+
+          {/* Profile Section */}
+          <View style={styles.section}>
+            <ThemedText style={styles.sectionTitle}>Profile Details</ThemedText>
+            <View style={styles.card}>
+              <View style={styles.inputWrapper}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Your Name"
+                  placeholderTextColor="#475569"
+                  value={profileName}
+                  onChangeText={setProfileName}
+                />
+              </View>
+              <TouchableOpacity 
+                style={styles.addBtn} 
+                onPress={handleUpdateProfile}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['#10B981', '#059669']}
+                  style={styles.addBtnGradient}
+                >
+                  <ThemedText style={styles.addBtnText}>Update Profile</ThemedText>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Hardware Triggers */}
@@ -170,6 +155,32 @@ export default function SettingsScreen() {
                   onValueChange={() => toggleTrigger('volumeTrigger')}
                   trackColor={{ true: '#3B82F6', false: '#1E293B' }}
                   thumbColor={settings.volumeTrigger ? '#fff' : '#475569'}
+                />
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <ThemedText style={styles.settingLabel}>Fall Detection</ThemedText>
+                  <ThemedText style={styles.settingDesc}>Detect sudden impact and stillness</ThemedText>
+                </View>
+                <Switch
+                  value={settings.fallDetection}
+                  onValueChange={() => toggleTrigger('fallDetection')}
+                  trackColor={{ true: '#10B981', false: '#1E293B' }}
+                  thumbColor={settings.fallDetection ? '#fff' : '#475569'}
+                />
+              </View>
+              <View style={styles.divider} />
+              <View style={styles.settingRow}>
+                <View style={styles.settingInfo}>
+                  <ThemedText style={styles.settingLabel}>Voice Command</ThemedText>
+                  <ThemedText style={styles.settingDesc}>Trigger SOS via voice (Beta)</ThemedText>
+                </View>
+                <Switch
+                  value={settings.voiceDetection}
+                  onValueChange={() => toggleTrigger('voiceDetection')}
+                  trackColor={{ true: '#8B5CF6', false: '#1E293B' }}
+                  thumbColor={settings.voiceDetection ? '#fff' : '#475569'}
                 />
               </View>
             </View>

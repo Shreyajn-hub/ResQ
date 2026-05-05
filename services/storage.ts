@@ -12,6 +12,9 @@ export interface Settings {
   voiceTrigger: boolean;
   locationSharingInterval: number; // in seconds
   language: 'en' | 'hi';
+  userName: string;
+  fallDetection: boolean;
+  voiceDetection: boolean;
 }
 
 const CONTACTS_KEY = '@resq_contacts';
@@ -23,6 +26,9 @@ const DEFAULT_SETTINGS: Settings = {
   voiceTrigger: false,
   locationSharingInterval: 30,
   language: 'en',
+  userName: 'User',
+  fallDetection: true,
+  voiceDetection: false,
 };
 
 export const StorageService = {

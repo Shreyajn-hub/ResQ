@@ -51,7 +51,7 @@ TaskManager.defineTask(LOCATION_TASK_NAME, async ({ data, error }) => {
     if (location) {
       const { latitude, longitude } = location.coords;
       console.log('Background location update:', latitude, longitude);
-      
+
       // In a real production app, we might send an SMS or update a local log.
       // SMS.sendSMSAsync(...) every 30s might be too much for real SMS costs, 
       // but the requirement says "supports continuous live location sharing every 30 seconds".

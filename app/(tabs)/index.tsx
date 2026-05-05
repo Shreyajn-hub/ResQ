@@ -16,9 +16,10 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { EmergencyService } from '@/services/emergency';
 import { LocationService } from '@/services/location';
-import { useEmergencyTriggers } from '@/hooks/useEmergencyTriggers';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useEmergencyTriggers } from '../../hooks/useEmergencyTriggers';
 import { StorageService, Contact, Settings } from '@/services/storage';
+import { SOSButton } from '@/components/SOSButton';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
@@ -28,7 +29,7 @@ export default function HomeScreen() {
   const [isTracking, setIsTracking] = useState(false);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [userName, setUserName] = useState('Shreya');
+  const [userName, setUserName] = useState('User');
   const [pulseAnim] = useState(new Animated.Value(1));
   const [fadeAnim] = useState(new Animated.Value(0));
 
@@ -70,13 +71,14 @@ export default function HomeScreen() {
     const c = await StorageService.getContacts();
     setSettings(s);
     setContacts(c);
+    if (s.userName) setUserName(s.userName);
   };
 
   const handleSOS = async (type: 'emergency' | 'unsafe' | 'location') => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     
     let msg = 'EMERGENCY! I need help immediately.';
-    if (type === 'unsafe') msg = "I don't feel safe, please check on me.";
+    if (type === 'unsafe') msg = "I don't feel safe, please check on me immediately.";
     if (type === 'location') msg = "Here is my current location.";
 
     try {
@@ -135,24 +137,8 @@ export default function HomeScreen() {
 
         {/* SOS Central Hub */}
         <View style={styles.sosContainer}>
-          <Animated.View style={[styles.sosOuterRipple, { transform: [{ scale: pulseAnim }] }]} />
-          <Animated.View style={[styles.sosInnerRipple, { transform: [{ scale: pulseAnim }] }]} />
-          
-          <TouchableOpacity 
-            style={styles.sosButton}
-            activeOpacity={0.85}
-            onPress={() => handleSOS('emergency')}
-            onLongPress={() => handleSOS('emergency')}
-          >
-            <LinearGradient
-              colors={['#EF4444', '#B91C1C']}
-              style={styles.sosGradient}
-            >
-              <IconSymbol name="exclamationmark.shield.fill" size={70} color="#fff" />
-              <ThemedText style={styles.sosText}>SOS</ThemedText>
-            </LinearGradient>
-          </TouchableOpacity>
-          <ThemedText style={styles.sosHint}>TAP OR HOLD IN DANGER</ThemedText>
+          <SOSButton onPress={() => handleSOS('emergency')} />
+          <ThemedText style={styles.sosHint}>TAP IN DANGER</ThemedText>
         </View>
 
         {/* Rapid Actions */}
@@ -165,7 +151,7 @@ export default function HomeScreen() {
             <View style={[styles.actionIconWrapper, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
               <IconSymbol name="eye.fill" size={22} color="#F59E0B" />
             </View>
-            <ThemedText style={styles.actionTitle}>I'm Unsafe</ThemedText>
+            <ThemedText style={styles.actionTitle}>I Don't Feel Safe</ThemedText>
             <ThemedText style={styles.actionDesc}>Silent Alert</ThemedText>
           </TouchableOpacity>
 
@@ -207,6 +193,11 @@ export default function HomeScreen() {
               <View style={[styles.statusIndicator, { backgroundColor: settings?.volumeTrigger ? '#10B981' : '#475569' }]} />
               <ThemedText style={styles.statusLabel}>Volume Trigger</ThemedText>
               <ThemedText style={styles.statusValue}>{settings?.volumeTrigger ? 'ACTIVE' : 'OFF'}</ThemedText>
+            </View>
+            <View style={styles.statusBox}>
+              <View style={[styles.statusIndicator, { backgroundColor: settings?.fallDetection ? '#10B981' : '#475569' }]} />
+              <ThemedText style={styles.statusLabel}>Fall Detection</ThemedText>
+              <ThemedText style={styles.statusValue}>{settings?.fallDetection ? 'ACTIVE' : 'OFF'}</ThemedText>
             </View>
           </View>
         </View>
